@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Interval finder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;1,400&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #eef1f4; --surface: #f8fafb; --ink: #1d2733; --muted: #5b6878;
+  --line: #c9d1da; --accent: #2f5d8a; --err: #a33a2a;
+  --ic1: #b5473a; --ic2: #c9852b; --ic3: #6f8f2e; --ic4: #2e8a7a; --ic5: #3b62a8; --ic6: #7d4fa0;
+  color-scheme: light;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141b23; --surface: #1a232d; --ink: #e3e8ee; --muted: #8d99a8;
+    --line: #2c3846; --accent: #7fb0e0; --err: #e8826f;
+    --ic1: #e07a6c; --ic2: #e3a85a; --ic3: #a3c45c; --ic4: #5cc2ae; --ic5: #7d9ee0; --ic6: #b48ad6;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141b23; --surface: #1a232d; --ink: #e3e8ee; --muted: #8d99a8;
+  --line: #2c3846; --accent: #7fb0e0; --err: #e8826f;
+  --ic1: #e07a6c; --ic2: #e3a85a; --ic3: #a3c45c; --ic4: #5cc2ae; --ic5: #7d9ee0; --ic6: #b48ad6;
+  color-scheme: dark;
+}
+html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+*, *::before, *::after { box-sizing: inherit; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 400 1rem/1.55 "Work Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+main { max-width: 46rem; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+h1 { font: 600 2.1rem/1.15 Spectral, Georgia, serif; margin: 0 0 .4rem; letter-spacing: -.01em; }
+h2 { font: 600 1.25rem/1.3 Spectral, Georgia, serif; margin: 2rem 0 .6rem; }
+p.lede { color: var(--muted); margin: 0 0 1.5rem; max-width: 36rem; }
+label { display: block; font-weight: 500; margin-bottom: .35rem; }
+.row { display: flex; gap: .6rem; flex-wrap: wrap; }
+input[type=text] {
+  flex: 1 1 16rem; font: 500 1.15rem/1.4 "Work Sans", system-ui, sans-serif;
+  padding: .6rem .75rem; color: var(--ink); background: var(--surface);
+  border: 1px solid var(--line); border-radius: 6px;
+}
+button {
+  font: 600 1rem/1 "Work Sans", system-ui, sans-serif; padding: .7rem 1.1rem;
+  background: var(--accent); color: var(--bg); border: 0; border-radius: 6px; cursor: pointer;
+}
+input:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.hint { color: var(--muted); font-size: .9rem; margin-top: .4rem; }
+.error { color: var(--err); font-weight: 500; margin-top: 1rem; }
+.warn { color: var(--muted); font-style: italic; margin-top: .6rem; }
+.figure { display: grid; grid-template-columns: minmax(0, 15rem) 1fr; gap: 1.5rem; align-items: center; margin-top: 1.5rem; }
+@media (max-width: 34rem) { .figure { grid-template-columns: 1fr; } .figure svg { max-width: 15rem; margin: 0 auto; } }
+svg { width: 100%; height: auto; display: block; }
+.id { font: 600 3rem/1 Spectral, Georgia, serif; }
+.id small { font: 400 1rem "Work Sans", sans-serif; color: var(--muted); margin-left: .4rem; }
+.strip { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin: .9rem 0 .4rem; }
+.cell { border: 1px solid var(--line); border-radius: 4px; padding: .35rem .2rem; text-align: center; font-size: .8rem; color: var(--muted); }
+.cell.on { color: var(--bg); font-weight: 600; border-color: transparent; }
+.cell b { display: block; font-size: 1rem; }
+.pairs { font-size: .95rem; }
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: .95rem; }
+th, td { text-align: left; padding: .45rem .6rem; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { font-weight: 600; color: var(--muted); }
+.semi { color: var(--muted); font-variant-numeric: tabular-nums; margin-left: .35rem; }
+.cell small { display: block; font-size: .72rem; opacity: .85; }
+details.atlas { margin-top: 2.5rem; border-top: 1px solid var(--line); padding-top: 1rem; }
+details.atlas summary {
+  list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: .5rem;
+  font: 600 1.25rem/1.3 Spectral, Georgia, serif; color: var(--ink);
+}
+details.atlas summary::-webkit-details-marker { display: none; }
+details.atlas summary::before {
+  content: "▸"; display: inline-block; color: var(--accent); font-size: 1rem;
+  transition: transform .15s ease;
+}
+details.atlas[open] summary::before { transform: rotate(90deg); }
+details.atlas summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+details.atlas:not([open]) .when-open, details.atlas[open] .when-closed { display: none; }
+details.atlas .scroll { margin-top: 1rem; }
+#atlasTable td:first-child { text-align: right; padding-right: 1rem; font-variant-numeric: tabular-nums; }
+#atlasTable tr.group th { padding-top: 1.1rem; color: var(--ink); font-family: Spectral, Georgia, serif; font-size: 1rem; border-bottom-color: var(--ink); }
+#atlasTable tr.current td { background: var(--surface); font-weight: 600; }
+#atlasTable tr.current td:first-child { box-shadow: inset 3px 0 var(--accent); }
+@media (prefers-reduced-motion: reduce) { details.atlas summary::before { transition: none; } }
+.swatch { display: inline-block; width: .7rem; height: .7rem; border-radius: 50%; margin-right: .4rem; vertical-align: baseline; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Interval finder</h1>
+  <p class="lede">Enter pitches to see every interval between them, grouped into the six interval pairs, with the set’s ID and pattern.</p>
+
+  <label for="pitches">Pitches</label>
+  <div class="row">
+    <input id="pitches" type="text" value="C E G Bb" autocomplete="off" spellcheck="false">
+    <button id="go" type="button">Find intervals</button>
+  </div>
+  <div class="hint">Pitches: letters A–G in any case, suffix # for sharp, lowercase b for flat (C E G Bb).<br>Semitone steps: signed numbers, each step from the previous note, optionally after a starting pitch (D -5 -2 +5 -2). Without one, the line starts on C.<br>Separate entries with spaces, commas, semicolons, pipes or hyphens.</div>
+
+  <div id="out" aria-live="polite"></div>
+
+  <details class="atlas">
+    <summary><span class="when-closed">Show the Interval Atlas</span><span class="when-open">Hide the Interval Atlas</span></summary>
+    <div class="scroll"><table id="atlasTable">
+      <thead><tr><th>ID</th><th>Interval set</th><th>Semitones</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+  </details>
+</main>
+
+<script>
+/* ===================== CONFIG: match these to the Companion =====================
+   PAIRS is the order of the six interval pairs. By default the set ID is a 6-bit
+   number with pair 1 as the lowest bit, so IDs run 0–63 (64 sets, empty included).
+   If the Companion numbers its Atlas differently, change idFromPattern().        */
+const PAIRS = [
+  { ic: 1, label: "m2 / M7", semis: "1 / 11" },
+  { ic: 2, label: "M2 / m7", semis: "2 / 10" },
+  { ic: 3, label: "m3 / M6", semis: "3 / 9" },
+  { ic: 4, label: "M3 / m6", semis: "4 / 8" },
+  { ic: 5, label: "P4 / P5", semis: "5 / 7" },
+  { ic: 6, label: "TT", semis: "6" }
+];
+/* Interval Atlas numbering (“Intervals: A Musician’s Companion,” ch. 3):
+   ID 1 = P1/P8; then sets grouped by how many pairs they hold (1, 2 … 6),
+   each group in lexicographic order of the pairs above. 1 + 6 + 15 + 20 + 15 + 6 + 1 = 64. */
+const ATLAS = (() => {
+  const ids = new Map();
+  let id = 2;
+  const combos = (k, start = 0, acc = []) => {
+    if (acc.length === k) return [acc];
+    let out = [];
+    for (let i = start; i < 6; i++) out = out.concat(combos(k, i + 1, [...acc, i]));
+    return out;
+  };
+  for (let k = 1; k <= 6; k++) for (const c of combos(k)) ids.set(c.join(","), id++);
+  return ids;
+})();
+const PAIR_SHORT = ["m2/M7", "M2/m7", "m3/M6", "M3/m6", "P4/P5", "TT"];
+const PAIR_SEMIS = ["1/11", "2/10", "3/9", "4/8", "5/7", "6"];
+
+function idFromPattern(bits) {              // bits[0] = pair 1 … bits[5] = pair 6
+  const key = bits.map((b, i) => (b ? i : -1)).filter(i => i >= 0).join(",");
+  return key === "" ? 1 : ATLAS.get(key);   // nothing but unisons/octaves → P1/P8
+}
+function atlasName(bits) {                  // written as in the Atlas’s Interval Set column
+  const s = PAIR_SHORT.filter((_, i) => bits[i]);
+  return s.length ? s.join(",") : "P1/P8";
+}
+function atlasSemitones(bits) {             // written as in the Atlas’s Semitones column
+  const s = PAIR_SEMIS.filter((_, i) => bits[i]);
+  return s.length ? s.join(",") : "0/12";
+}
+/* ============================================================================== */
+
+const SEMI_NAMES = ["P1","m2","M2","m3","M3","P4","TT","P5","m6","M6","m7","M7"];
+const LETTER_PC  = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+const CLOCK_NAMES = ["C","C#","D","Eb","E","F","F#","G","Ab","A","Bb","B"];
+const NOTE_RE = /^([A-Ga-g])(#|b)?$/;
+const NUM_RE  = /^[+-]?\d+$/;
+
+/* Delimiters: space , ; | and hyphen. A hyphen directly before a digit is a
+   minus sign, so "5-2" reads as +5 then -2, and "C-E-G" as three pitches. */
+function tokenize(text) {
+  return text
+    .replace(/[\u2212\u2013]/g, "-")              // accept typographic minus / en dash
+    .replace(/-(?!\d)/g, " ")                     // hyphen not before a digit = delimiter
+    .replace(/([^\s,;|])(?=[+-]\d)/g, "$1 ")      // split "5-2" → "5 -2", "D-5" → "D -5"
+    .split(/[\s,;|]+/).filter(Boolean);
+}
+
+function badToken(tok) {
+  return `“${tok}” isn’t a pitch or a semitone step. Use a letter A–G with optional # or b, or a whole number like -5 or +7.`;
+}
+
+function parseNote(tok) {
+  const m = NOTE_RE.exec(tok);
+  if (!m) return null;
+  const letter = m[1].toUpperCase();
+  const acc = m[2] === "#" ? 1 : m[2] === "b" ? -1 : 0;
+  return { name: letter + (m[2] || ""), pc: (LETTER_PC[letter] + acc + 12) % 12 };
+}
+
+function parseInput(text) {
+  const tokens = tokenize(text);
+  if (tokens.length === 0) throw new Error("Enter pitches or semitone steps.");
+  const isNum = t => NUM_RE.test(t);
+
+  if (!tokens.some(isNum)) {
+    const pitches = tokens.map(t => { const p = parseNote(t); if (!p) throw new Error(badToken(t)); return p; });
+    return { mode: "pitch", pitches, steps: [] };
+  }
+
+  // Semitone mode: optional starting pitch, then signed steps only.
+  let start = { name: "C", pc: 0 };
+  let rest = tokens;
+  if (!isNum(tokens[0])) {
+    start = parseNote(tokens[0]);
+    if (!start) throw new Error(badToken(tokens[0]));
+    rest = tokens.slice(1);
+  }
+  const steps = rest.map(t => {
+    if (isNum(t)) return parseInt(t, 10);
+    if (parseNote(t)) throw new Error(`“${t}” is a pitch inside a semitone sequence. Only the first entry can be a pitch, as the starting note.`);
+    throw new Error(badToken(t));
+  });
+  let h = start.pc;                               // running pitch height in semitones
+  const pitches = [{ ...start, h }];
+  steps.forEach(s => {
+    h += s;
+    const pc = ((h % 12) + 12) % 12;
+    pitches.push({ name: CLOCK_NAMES[pc], pc, h });
+  });
+  return { mode: "semitone", pitches, steps };
+}
+
+const signed = n => (n > 0 ? "+" : n < 0 ? "−" : "") + Math.abs(n);
+function compoundName(d) {
+  const a = Math.abs(d), simple = a % 12, octs = Math.floor(a / 12);
+  if (a === 0) return "P1";
+  if (simple === 0) return octs === 1 ? "P8" : `${octs} 8ves`;
+  return SEMI_NAMES[simple] + (octs ? ` + ${octs} 8ve${octs > 1 ? "s" : ""}` : "");
+}
+
+function analyze(pitches) {
+  if (pitches.length < 2) throw new Error("Enter at least two pitches.");
+  const intervals = [], unisons = [];
+  const counts = [0, 0, 0, 0, 0, 0];
+  for (let i = 0; i < pitches.length; i++) {
+    for (let j = i + 1; j < pitches.length; j++) {
+      const a = pitches[i], b = pitches[j];
+      const up = (b.pc - a.pc + 12) % 12;
+      if (up === 0) { unisons.push(`${a.name}–${b.name}`); continue; }
+      const ic = Math.min(up, 12 - up);
+      counts[ic - 1]++;
+      const actual = (a.h != null && b.h != null) ? b.h - a.h : null;
+      intervals.push({ a, b, up, down: 12 - up, ic, actual });
+    }
+  }
+  const bits = counts.map(c => (c > 0 ? 1 : 0));
+  return { intervals, unisons, counts, bits, id: idFromPattern(bits) };
+}
+
+function clockSVG(pitches, intervals) {
+  const R = 84, C = 100;
+  const pos = pc => {
+    const t = (pc / 12) * 2 * Math.PI - Math.PI / 2;
+    return [C + R * Math.cos(t), C + R * Math.sin(t)];
+  };
+  const present = new Map();
+  pitches.forEach(p => { if (!present.has(p.pc)) present.set(p.pc, p.name); });
+  let s = `<svg viewBox="0 0 200 200" role="img" aria-label="Pitch-class circle with intervals drawn as lines">`;
+  s += `<circle cx="${C}" cy="${C}" r="${R}" fill="none" stroke="var(--line)"/>`;
+  intervals.forEach(iv => {
+    const [x1, y1] = pos(iv.a.pc), [x2, y2] = pos(iv.b.pc);
+    s += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="var(--ic${iv.ic})" stroke-width="2" stroke-linecap="round" opacity=".85"/>`;
+  });
+  for (let pc = 0; pc < 12; pc++) {
+    const [x, y] = pos(pc);
+    const on = present.has(pc);
+    s += `<circle cx="${x}" cy="${y}" r="${on ? 11 : 3}" fill="${on ? "var(--ink)" : "var(--line)"}"/>`;
+    if (on) s += `<text x="${x}" y="${y + 4}" text-anchor="middle" font-size="10" font-weight="600" fill="var(--bg)" font-family="Work Sans, sans-serif">${present.get(pc)}</text>`;
+  }
+  return s + `</svg>`;
+}
+
+function render() {
+  const out = document.getElementById("out");
+  try {
+    const input = parseInput(document.getElementById("pitches").value);
+    const pitches = input.pitches;
+    const r = analyze(pitches);
+    const semiMode = input.mode === "semitone";
+
+    const strip = PAIRS.map((p, i) => {
+      const on = r.bits[i];
+      return `<div class="cell${on ? " on" : ""}" style="${on ? `background:var(--ic${p.ic})` : ""}"><b>${on}</b>${p.label}<small>${p.semis}</small></div>`;
+    }).join("");
+
+
+    const semi = txt => `<span class="semi">${txt}</span>`;
+    const pairCell = ic => ic === 0
+      ? `<td>unison / octave</td>`
+      : `<td><span class="swatch" style="background:var(--ic${ic})"></span>${PAIRS[ic - 1].label}</td>`;
+
+    const rows = r.intervals.map(iv => `
+      <tr>
+        <td>${iv.a.name} → ${iv.b.name}</td>
+        ${semiMode ? `<td>${signed(iv.actual)}${semi(compoundName(iv.actual))}</td>` : ""}
+        <td>+${iv.up}${semi(SEMI_NAMES[iv.up])}</td>
+        <td>−${iv.down}${semi(SEMI_NAMES[iv.down])}</td>
+        ${pairCell(iv.ic)}
+      </tr>`).join("");
+
+    const stepRows = input.steps.map((s, i) => {
+      const m = ((s % 12) + 12) % 12;
+      return `
+      <tr>
+        <td>${i + 1}</td>
+        <td>${pitches[i].name} → ${pitches[i + 1].name}</td>
+        <td>${signed(s)}${semi(compoundName(s))}</td>
+        ${pairCell(Math.min(m, 12 - m))}
+      </tr>`;
+    }).join("");
+
+    out.innerHTML = `
+      <div class="figure">
+        ${clockSVG(pitches, r.intervals)}
+        <div>
+          <div class="id">${r.id}<small>Atlas ID</small></div>
+          <div class="strip">${strip}</div>
+          <div class="pairs">Interval set: <strong>${atlasName(r.bits)}</strong></div>
+          <div class="pairs">Semitones: <strong>${atlasSemitones(r.bits)}</strong></div>
+          <div class="pairs">Interval counts by pair: ${r.counts.join(" ")}</div>
+          ${r.unisons.length ? `<div class="warn">Unisons and octaves (not counted): ${r.unisons.join(", ")}</div>` : ""}
+        </div>
+      </div>
+      ${semiMode ? `
+      <h2>Steps as entered</h2>
+      <div class="scroll"><table>
+        <thead><tr><th>Step</th><th>From → to</th><th>Semitones</th><th>Pair</th></tr></thead>
+        <tbody>${stepRows}</tbody>
+      </table></div>` : ""}
+      <h2>All intervals</h2>
+      <div class="scroll"><table>
+        <thead><tr><th>From → to</th>${semiMode ? "<th>Actual</th>" : ""}<th>Ascending</th><th>Descending</th><th>Pair</th></tr></thead>
+        <tbody>${rows || `<tr><td colspan="${semiMode ? 5 : 4}">No intervals other than unisons and octaves.</td></tr>`}</tbody>
+      </table></div>`;
+    highlightAtlas(r.id);
+  } catch (e) {
+    out.innerHTML = `<div class="error">${e.message}</div>`;
+    highlightAtlas(null);
+  }
+}
+
+/* The full Atlas, built from the same ATLAS map that assigns IDs above. */
+(function buildAtlas() {
+  const rows = [{ id: 1, size: 1, name: "P1/P8", semis: "0/12" }];
+  for (const [key, id] of ATLAS) {
+    const idx = key.split(",").map(Number);
+    rows.push({ id, size: idx.length, name: idx.map(i => PAIR_SHORT[i]).join(","), semis: idx.map(i => PAIR_SEMIS[i]).join(",") });
+  }
+  rows.sort((a, b) => a.id - b.id);
+  const counts = {};
+  rows.forEach(r => { counts[r.size] = (counts[r.size] || 0) + 1; });
+  let html = "", lastSize = 0;
+  rows.forEach(r => {
+    if (r.size !== lastSize) {
+      const label = r.size === 6 ? "Universal set, all interval pairs" : `${r.size} interval pair${r.size > 1 ? "s" : ""}`;
+      html += `<tr class="group"><th colspan="3">${label} (${counts[r.size]})</th></tr>`;
+      lastSize = r.size;
+    }
+    html += `<tr data-id="${r.id}"><td>${r.id}</td><td>${r.name}</td><td>${r.semis}</td></tr>`;
+  });
+  document.querySelector("#atlasTable tbody").innerHTML = html;
+})();
+
+function highlightAtlas(id) {
+  document.querySelectorAll("#atlasTable tr.current").forEach(t => t.classList.remove("current"));
+  if (id == null) return;
+  const row = document.querySelector(`#atlasTable tr[data-id="${id}"]`);
+  if (row) row.classList.add("current");
+}
+
+document.getElementById("go").addEventListener("click", render);
+document.getElementById("pitches").addEventListener("keydown", e => { if (e.key === "Enter") render(); });
+render();
+</script>
+</body>
+</html>
